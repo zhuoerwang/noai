@@ -1,6 +1,6 @@
-class Node:
-    def __init__(self, key: int | None=None, value: int | None=None):
-        self.key, self.value = key, value
+class Node():
+    def __init__(self, key: int | None = None, val: int | None = None):
+        self.key, self.val = key, val
         self.prev, self.next = None, None
 
 class LRUCache():
@@ -11,54 +11,49 @@ class LRUCache():
         self._cap = cap
     
     def get(self, key: int) -> int:
-        if key not in self._cache:
-            return -1
+        if key in self._cache:
+            node = self._cache[key]
+            self._remove(node)
+            self._move_to_end(node)
+            return node.val
         
-        node = self._cache[key]
-        self._remove(node)
-        self._insert(node)
-        return node.value
+        return -1
     
-    def put(self, key: int, value: int) -> None:
+    def put(self, key: int, val: int) -> None:
         if key in self._cache:
             self._remove(self._cache[key])
-        
-        self._cache[key] = Node(key, value)
-        self._insert(self._cache[key])
 
+        self._cache[key] = Node(key, val)
+        self._move_to_end(self._cache[key])
+        
         if len(self._cache) > self._cap:
-            evict_node = self._tail.prev
+            evict_node = self._head.next
             self._remove(evict_node)
             del self._cache[evict_node.key]
 
-    def _insert(self, node: Node):
-        node.prev, node.next = self._head, self._head.next
-        node.next.prev = node
-        self._head.next = node
+    def _move_to_end(self, node: Node):
+        prev, nxt = self._tail.prev, self._tail
+        node.prev, node.next = prev, nxt
+        prev.next, nxt.prev = node, node
 
     def _remove(self, node: Node):
-        node.prev.next, node.next.prev = node.next, node.prev
+        prev, nxt = node.prev, node.next
+        nxt.prev, prev.next = prev, nxt
     
     def keys(self) -> list[int]:
         res = []
-        node = self._head.next
-        while node != self._tail:
+        node = self._tail.prev
+        while node != self._head:
             res.append(node.key)
-            node = node.next
+            node = node.prev
         
         return res
     
+    def peek(self, key: int) -> int:
+        if key in self._cache:
+            return self._cache[key].val
+        
+        return -1
+
     def size(self) -> int:
         return len(self._cache)
-    
-    def peek(self, key: int) -> int:
-        if key not in self._cache:
-            return -1
-        
-        return self._cache[key].value
-
-    def save(self, filepath: str) -> None:
-        pass
-    
-    def laod(self, filepath: str) -> None:
-        pass
