@@ -260,3 +260,61 @@ class TestLevel4:
         cache.put(2, 20)  # evicts 1
         cache.put(3, 30)  # evicts 2
         assert evicted == [(1, 10), (2, 20)]
+
+    def test_expired_but_recently_used_does_not_evict_valid(self):
+        """Expired item that was accessed (moved to tail) before expiring
+        should not cause a valid item to be evicted."""
+        cache = LRUCache(2)
+        cache.put(1, 10, ttl=1)
+        cache.put(2, 20)
+        cache.get(1)          # moves key=1 to tail (most recent)
+        time.sleep(1.5)       # key=1 is now expired
+        cache.put(3, 30)      # should evict expired key=1, NOT valid key=2
+        assert cache.get(2) == 20   # key=2 must survive
+        assert cache.get(3) == 30
+
+    def test_size_with_expired_items(self):
+        """size() should not crash when expired items exist."""
+        cache = LRUCache(3)
+        cache.put(1, 10, ttl=1)
+        cache.put(2, 20, ttl=1)
+        cache.put(3, 30)
+        time.sleep(1.5)
+        assert cache.size() == 1  # only key=3 is alive
+
+    def test_overwrite_clears_old_ttl(self):
+        """put(key, val) without TTL should clear a previous TTL for that key."""
+        cache = LRUCache(2)
+        cache.put(1, 10, ttl=1)
+        cache.put(1, 20)          # overwrite without TTL
+        time.sleep(1.5)
+        assert cache.get(1) == 20  # should NOT have expired
+
+    def test_keys_excludes_expired(self):
+        """keys() should not return expired items."""
+        cache = LRUCache(3)
+        cache.put(1, 10, ttl=1)
+        cache.put(2, 20)
+        cache.put(3, 30)
+        time.sleep(1.5)
+        assert 1 not in cache.keys()
+        assert cache.keys() == [3, 2]
+
+    def test_peek_expired_triggers_evict_callback(self):
+        """peek() on an expired key should fire the on_evict callback."""
+        evicted = []
+        cache = LRUCache(2)
+        cache.on_evict(lambda k, v: evicted.append((k, v)))
+        cache.put(1, 10, ttl=1)
+        time.sleep(1.5)
+        cache.peek(1)
+        assert (1, 10) in evicted
+
+    def test_ttl_key_evicted_by_capacity_fires_callback(self):
+        """A TTL key evicted by capacity (not expiry) should still fire callback."""
+        evicted = []
+        cache = LRUCache(1)
+        cache.on_evict(lambda k, v: evicted.append((k, v)))
+        cache.put(1, 10, ttl=60)  # long TTL, won't expire
+        cache.put(2, 20)          # evicts key=1 by capacity
+        assert (1, 10) in evicted
