@@ -1,3 +1,5 @@
+# Project 1: In-Memory Database
+
 ## Level 1: Basic Operations ✅ COMPLETE
 
 **Implement a class `Database` with:**
@@ -27,7 +29,7 @@ db.delete("name")       # False
 
 ---
 
-## Level 2: Scan Operations (Unlock after Level 1)
+## Level 2: Scan Operations ✅ COMPLETE
 
 **Add methods:**
 
@@ -60,7 +62,7 @@ db.scan_by_prefix("nonexistent")
 
 ---
 
-## Level 3: TTL Support (Unlock after Level 2)
+## Level 3: TTL Support ✅ COMPLETE
 
 **Modify methods:**
 
@@ -93,7 +95,7 @@ db.scan()               # [("permanent", "stays")]
 
 ---
 
-## Level 4: Persistence (Unlock after Level 3)
+## Level 4: Persistence ✅ COMPLETE
 
 **Add methods:**
 
@@ -124,5 +126,3 @@ db2.load("backup.db")
 db2.get("key1")         # "value1"
 db2.get("key2")         # "value2" (TTL preserved relative to save time)
 ```
-
----
