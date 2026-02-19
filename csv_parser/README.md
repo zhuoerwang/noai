@@ -1,5 +1,29 @@
 # Project 8: CSV Parser + Streaming Aggregation
 
+## Interview Context
+
+**Format**: Live coding round, ~45-60 min. You'll be given a CSV file and asked to manipulate data. Screen-shared, no AI tools.
+
+**What they're evaluating** (from the prep hints):
+- Reasoning over typing speed — clarify ambiguous requirements, propose concrete assumptions, justify them
+- State machine design with clear transitions and invariants
+- Streaming/windowed aggregation comfort
+- Handling dirty/malformed data gracefully
+
+**Likely flow**:
+1. Parse a CSV file (state machine) — **~15-20 min, core**
+2. Stream rows + do something with the data — **~10-15 min, core**
+3. Windowed aggregation over the stream — **~10-15 min, stretch**
+4. Group-by / late data — **discussion only, unlikely to code**
+
+**Interview habits to practice**:
+- Before coding: "Let me clarify a few things..." — ask about edge cases
+- State assumptions out loud: "I'll assume the file fits the RFC 4180 CSV spec"
+- Narrate your state machine transitions as you write them
+- When stuck, say what you're thinking, not just silence
+
+---
+
 ## Level 1: CSV Parser State Machine
 
 **Implement a class `CSVParser`:**
@@ -11,6 +35,17 @@ class CSVParser:
     parse(text: str) -> list[list[str]]            # parse multi-line CSV text
 ```
 
+**Clarification questions to ask the interviewer:**
+- Should I handle newlines inside quoted fields? (likely yes)
+- How should I handle malformed input — e.g., unclosed quotes? (raise error vs best-effort)
+- Is whitespace around delimiters significant? (usually yes — preserve it)
+- Are we following RFC 4180, or a custom dialect?
+
+**Assumptions to state:**
+- Escaped quotes use the doubled-quote convention: `""` inside a quoted field
+- Whitespace is preserved, not trimmed
+- Empty fields are valid: `a,,c` -> `["a", "", "c"]`
+
 **Requirements:**
 - Handle basic comma-separated values: `a,b,c` -> `["a", "b", "c"]`
 - Handle quoted fields: `"hello, world",b` -> `["hello, world", "b"]`
@@ -21,7 +56,7 @@ class CSVParser:
 - Whitespace is preserved (not trimmed)
 - Implement as a **state machine** with explicit states: `FIELD_START`, `UNQUOTED`, `QUOTED`, `QUOTE_IN_QUOTED`
 
-**State transitions:**
+**State transitions (narrate these as you code):**
 ```
 FIELD_START --["]-->   QUOTED
 FIELD_START --[,]-->   FIELD_START (emit empty field)
@@ -38,6 +73,11 @@ QUOTE_IN_QUOTED --[,]--> FIELD_START (emit field)
 QUOTE_IN_QUOTED --[EOF]--> (emit field)
 ```
 
+**Invariants to mention:**
+- Every state transition either appends to the current field or emits it
+- At EOF, the current field is always emitted (handles trailing content)
+- The state machine is O(n) single-pass — no backtracking
+
 **Test Cases:**
 ```python
 parser = CSVParser()
@@ -45,6 +85,8 @@ assert parser.parse_row('a,b,c') == ['a', 'b', 'c']
 assert parser.parse_row('"hello, world",b') == ['hello, world', 'b']
 assert parser.parse_row('"say ""hi""",b') == ['say "hi"', 'b']
 assert parser.parse_row('a,,c') == ['a', '', 'c']
+assert parser.parse_row('a,b,') == ['a', 'b', '']
+assert parser.parse_row('') == ['']
 ```
 
 ---
@@ -60,6 +102,17 @@ class CSVStream:
     iter_rows_from_file(filepath: str) -> Iterator[dict[str, str]]
 ```
 
+**Clarification questions to ask:**
+- How large is the file? (motivates streaming vs load-all)
+- Should I auto-detect types (int/float) or keep everything as strings?
+- What if a row has more/fewer columns than the header?
+- Is the data clean, or should I expect malformed rows?
+
+**Assumptions to state:**
+- File could be large, so we stream line-by-line (generator-based, O(1) memory)
+- Mismatched columns: extra fields truncated, missing fields filled with `""`
+- Type coercion: attempt `int`, then `float`, then keep as `str`
+
 **Requirements:**
 - `source` is any iterable of strings (lines), enabling streaming from files/network
 - If `header=True`, first row is used as column names; yields `dict` per row
@@ -68,6 +121,11 @@ class CSVStream:
 - Handle rows that span multiple lines (quoted newlines)
 - Handle mismatched column count: extra fields are truncated, missing fields are empty string
 - Type coercion: auto-detect int, float, or keep as string
+
+**Key design point** — handling multi-line quoted fields in a streaming context:
+- You can't just `for line in source` — a single CSV row may span multiple lines
+- Need a line accumulator: if a line has an unclosed quote, keep reading until the quote closes
+- This is a common follow-up question
 
 **Test Cases:**
 ```python
@@ -79,6 +137,11 @@ assert rows == [
     {"name": "Alice", "age": 30, "city": "NYC"},
     {"name": "Bob", "age": 25, "city": "LA"},
 ]
+
+# Mismatched columns
+lines2 = ["a,b", "1,2,3", "4"]
+rows2 = list(stream.iter_rows(iter(lines2)))
+assert rows2 == [{"a": 1, "b": 2}, {"a": 4, "b": ""}]
 ```
 
 ---
@@ -93,6 +156,17 @@ class WindowAggregator:
     add_row(row: dict) -> list[dict] | None   # returns completed window results
     flush() -> list[dict]                      # flush remaining incomplete window
 ```
+
+**Clarification questions to ask:**
+- Are timestamps guaranteed to be sorted / monotonically increasing?
+- What aggregations do you want? (count, sum, avg, min, max?)
+- For tumbling windows — are boundaries aligned to epoch (0, size, 2*size...) or relative to first row?
+- Should I handle the case where a single row triggers multiple window closes?
+
+**Assumptions to state:**
+- Timestamps arrive in order (for now — Level 4 relaxes this)
+- Window boundaries are epoch-aligned: `[0, size), [size, 2*size), ...`
+- Aggregate all numeric columns automatically
 
 **Requirements:**
 - `window_type`: `"tumbling"` or `"sliding"`
@@ -125,11 +199,18 @@ assert result[0]["avg_value"] == 15.0
 
 ## Level 4: Multi-Key Group-By + Late-Arriving Data
 
+*Unlikely to code in interview — good for discussion / "how would you extend this?"*
+
 **Extend `WindowAggregator`:**
 
 ```
 __init__(..., group_by: list[str] | None = None, allowed_lateness: float = 0) -> None
 ```
+
+**Clarification questions to ask:**
+- How late can data arrive? Is there a watermark?
+- When a late row updates a closed window, should I re-emit the updated result?
+- How do I signal that a row was dropped?
 
 **Requirements:**
 - `group_by`: columns to group by before aggregating (e.g. `["city"]`)

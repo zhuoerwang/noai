@@ -1,4 +1,4 @@
-# Project 1: In-Memory Database
+# Project 1: KV Store (In-Memory Key-Value Store)
 
 ## Level 1: Basic Operations ✅ COMPLETE
 
