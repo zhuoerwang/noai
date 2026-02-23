@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1a1a1a;
+  --border: #262626;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --accent: #22d3ee;
+  --accent-dim: #0e7490;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #eab308;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* CodeMirror overrides */
+.cm-editor {
+  height: 100%;
+  font-size: 14px;
+}
+.cm-editor .cm-scroller {
+  font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+/* Markdown prose overrides */
+.prose {
+  --tw-prose-body: var(--text-primary);
+  --tw-prose-headings: #f5f5f5;
+  --tw-prose-links: var(--accent);
+  --tw-prose-code: var(--accent);
+  --tw-prose-pre-bg: var(--bg-tertiary);
+  --tw-prose-pre-code: var(--text-primary);
+  --tw-prose-bullets: var(--text-muted);
+  --tw-prose-counters: var(--text-muted);
+  --tw-prose-hr: var(--border);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
+  --tw-prose-bold: #f5f5f5;
+}
+
+.prose pre {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.prose code:not(pre code) {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+
+.prose table {
+  font-size: 0.875rem;
+}
+
+.prose th, .prose td {
+  padding: 8px 12px;
+}
