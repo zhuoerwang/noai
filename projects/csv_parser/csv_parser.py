@@ -31,26 +31,26 @@ class CSVParser:
                 "OTHERS": States.QUOTE_IN_QUOTED
             }
         }
+        self.curr_state = States.FIELD_START
 
     def parse_row(self, line: str) -> list[str]:
         """ parse a single CSV line into fields """
-        curr_state = States.FIELD_START
         field_list = []
         field_content = []
         for char in line:
-            if char in self.transition_rules[curr_state]:
-                if curr_state == States.QUOTE_IN_QUOTED and char == self.quotechar:
+            if char in self.transition_rules[self.curr_state]:
+                if self.curr_state == States.QUOTE_IN_QUOTED and char == self.quotechar:
                     # escape the quote char
                     field_content.append(char)
-                curr_state = self.transition_rules[curr_state][char]
+                self.curr_state = self.transition_rules[self.curr_state][char]
             else:
                 field_content.append(char)
                 # accumulate the filed when it's not special condition
-                curr_state = self.transition_rules[curr_state]["OTHERS"]
+                self.curr_state = self.transition_rules[self.curr_state]["OTHERS"]
 
             # If the state is States.FIELD_START, emit the content
             # and reset the field_content
-            if curr_state == States.FIELD_START:
+            if self.curr_state == States.FIELD_START:
                 field_list.append(''.join(field_content))
                 field_content = []
         
@@ -62,17 +62,16 @@ class CSVParser:
         """ parse multi-line CSV text """
         res = []
         line = []
-        curr_state = States.FIELD_START
         for char in text:
-            if char in self.transition_rules[curr_state]:
-                curr_state = self.transition_rules[curr_state][char]
+            if char in self.transition_rules[self.curr_state]:
+                self.curr_state = self.transition_rules[self.curr_state][char]
             else:
-                if curr_state != States.QUOTED and char == "\n" and len(line) != 0:
+                if self.curr_state != States.QUOTED and char == "\n" and len(line) != 0:
                     res.append(self.parse_row(''.join(line)))
-                    curr_state = States.FIELD_START
+                    self.curr_state = States.FIELD_START
                     line = []
                     continue
-                curr_state = self.transition_rules[curr_state]["OTHERS"]
+                self.curr_state = self.transition_rules[self.curr_state]["OTHERS"]
             line.append(char)
         
         # process last line
@@ -122,7 +121,7 @@ class CSVStream:
                     row_content.append(value)
             
             # Edge case: add missing field, append ""
-            for j in range(i+1, len(head)):
+            for j in range(i + 1, len(head)):
                 if self.header:
                     row_content[head[j]] = ""
                 else:
